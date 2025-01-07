@@ -1,0 +1,47 @@
+version: '3.8'
+
+networks:
+  default:
+    driver: bridge
+
+services:
+  # ----------------- ORS application configuration ------------------- #
+  ors:
+    build:
+      context: ./
+    container_name: ors
+    ports:
+      - "8080:8082"  # Expose the ORS API on port 8080
+      - "9001:9001"  # Expose additional port for monitoring (optional)
+    image: openrouteservice/openrouteservice:v8.0.0
+    volumes:
+      - ./:/home/ors  
+    environment:
+      REBUILD_GRAPHS: False  # Set to True to rebuild graphs on container start.
+      CONTAINER_LOG_LEVEL: INFO  # Log level for the container. Possible values: DEBUG, INFO, WARNING, ERROR, CRITICAL
+      XMS: 1g  # start RAM assigned to java
+      XMX: 2g  
+      ADDITIONAL_JAVA_OPTS: ""  # further options you want to pass to the java command
+
+      # ----------------- Properties configuration ------------------- #
+      ors.engine.source_file: /home/ors/files/morocco-latest.osm.pbf
+      #ors.engine.graphs_root_path: /home/ors/graphs
+      #ors.engine.elevation.cache_path: /home/ors/elevation_cache
+      #ors.engine.profiles.car.enabled: true
+
+
+  # ----------------- vroom application configuration ------------------- #
+  vroom:
+    container_name: vroom
+    image: ghcr.io/vroom-project/vroom-docker:v1.14.0
+    ports:
+      - 3000:3000 
+    volumes:
+      - ./vroom-conf/:/conf
+    environment:
+      - VROOM_ROUTER=ors
+      - ORS_HOST=ors
+      - ORS_PORT=8080
+    depends_on:
+      - ors
+
